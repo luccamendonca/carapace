@@ -1,0 +1,18 @@
+syntax = "proto3";
+package carapace_command;
+
+service CarapaceCommand {
+    // Our SendCommand rpc accepts CommandRequests and returns HelloReplies
+    rpc SendCommand (CommandRequest) returns (CommandResponse);
+}
+
+message CommandRequest {
+    // Request message contains the name to be greeted
+    string command = 1;
+    string args = 2;
+}
+
+message CommandResponse {
+    // Reply contains the greeting message
+    string message = 1;
+}
