@@ -74,10 +74,10 @@ fn run_command(command: &str, args: &str) -> Vec<u8> {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse()?;
-    let greeter = Commander::default();
+    let commander = Commander::default();
 
     Server::builder()
-        .add_service(CarapaceCommandServer::new(greeter))
+        .add_service(CarapaceCommandServer::new(commander))
         .serve(addr)
         .await?;
 
