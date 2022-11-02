@@ -1,7 +1,7 @@
-use hello_world::carapace_command_client::CarapaceCommandClient;
-use hello_world::CommandRequest;
+use carapace_client::carapace_command_client::CarapaceCommandClient;
+use carapace_client::CommandRequest;
 
-pub mod hello_world {
+pub mod carapace_client {
     tonic::include_proto!("carapace_command");
 }
 
@@ -10,7 +10,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = CarapaceCommandClient::connect("http://[::1]:50051").await?;
 
     let request = tonic::Request::new(CommandRequest {
-        command: "wallrousel".into(),
+        command: "cpu-temp".into(),
         args: "".into(),
     });
 
