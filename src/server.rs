@@ -1,8 +1,10 @@
 use std::env;
 use std::process::Command;
 
+use http::Method;
 use tonic::{transport::Server, Request, Response, Status};
 use tonic_web::GrpcWebLayer;
+use tower_http::cors::{Any, CorsLayer};
 
 use carapace_command::carapace_command_server::{CarapaceCommand, CarapaceCommandServer};
 use carapace_command::{CommandRequest, CommandResponse};
@@ -11,7 +13,7 @@ pub mod carapace_command {
     tonic::include_proto!("carapace_command");
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Commander {}
 
 #[tonic::async_trait]
@@ -77,12 +79,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse().unwrap();
     let commander = CarapaceCommandServer::new(Commander::default());
 
-    Server::builder()
+    let grpc_web_layer = GrpcWebLayer::new();
+    let cors_layer = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers(Any)
+        .allow_origin(Any);
+
+    match Server::builder()
         .accept_http1(true)
-        .layer(GrpcWebLayer::new())
+        .layer(cors_layer)
+        .layer(grpc_web_layer)
         .add_service(commander)
         .serve(addr)
-        .await?;
+        .await
+    {
+        Ok(_) => (),
+        Err(e) => println!("Err: {}", e),
+    }
 
     Ok(())
 }
