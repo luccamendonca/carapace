@@ -2,6 +2,7 @@ use std::env;
 use std::process::Command;
 
 use tonic::{transport::Server, Request, Response, Status};
+use tonic_web::GrpcWebLayer;
 
 use carapace_command::carapace_command_server::{CarapaceCommand, CarapaceCommandServer};
 use carapace_command::{CommandRequest, CommandResponse};
@@ -73,11 +74,13 @@ fn run_command(command: &str, args: &str) -> Vec<u8> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:50051".parse()?;
-    let commander = Commander::default();
+    let addr = "[::1]:50051".parse().unwrap();
+    let commander = CarapaceCommandServer::new(Commander::default());
 
     Server::builder()
-        .add_service(CarapaceCommandServer::new(commander))
+        .accept_http1(true)
+        .layer(GrpcWebLayer::new())
+        .add_service(commander)
         .serve(addr)
         .await?;
 

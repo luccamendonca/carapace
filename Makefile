@@ -16,3 +16,10 @@ server: check-env
 .PHONY: client
 client:
 	cargo run --bin carapace-client
+
+.PHONY: gen-client-js
+gen-client-js:
+	cd proto && \
+	protoc --proto_path=. carapace_command.proto \
+		--js_out=import_style=commonjs:clients/js \
+		--grpc-web_out=import_style=commonjs,mode=grpcwebtext:clients/js
