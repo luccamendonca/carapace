@@ -1,7 +1,7 @@
 .PHONY: check-env
 check-env:
-ifndef ALLOWED_CMD_PATH
-	$(error ALLOWED_CMD_PATH is undefined)
+ifndef ALLOWED_CMD_PATHS
+	$(error ALLOWED_CMD_PATHS is undefined)
 endif
 
 .PHONY: check-deps

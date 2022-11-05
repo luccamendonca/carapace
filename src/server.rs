@@ -1,4 +1,5 @@
 use std::env;
+use std::net::SocketAddr;
 use std::process::Command;
 
 use http::Method;
@@ -25,58 +26,84 @@ impl CarapaceCommand for Commander {
         println!("Got a request: {:?}", request);
 
         let inner_request = request.into_inner();
-        let command = inner_request.command.as_str();
+        let command = inner_request.command;
         let args = inner_request.args.as_str();
-        let cmd_output = run_command(command, args);
         let command_response = carapace_command::CommandResponse {
-            message: format!("Command result: {}", String::from_utf8(cmd_output).unwrap()).into(),
+            message: run_command(command, args),
         };
 
         Ok(Response::new(command_response))
     }
 }
 
-fn check_command(command: &str) -> Result<String, String> {
-    let allowed_cmd_path: String;
-    match env::var("ALLOWED_CMD_PATH") {
-        Ok(val) => allowed_cmd_path = val,
-        Err(e) => panic!("couldn't interpret ALLOWED_CMD_PATH: {e}"),
+fn check_command_path(command: &str) -> Result<String, String> {
+    let allowed_cmd_paths: String = env::var("ALLOWED_CMD_PATHS").unwrap();
+    let mut allow_command: bool = false;
+
+    for path in allowed_cmd_paths.split(',') {
+        let output = Command::new("test")
+            .arg("-f")
+            .arg(format!("{}/{}", path, command))
+            .output()
+            .expect("failed to execute process");
+
+        if output.status.success() {
+            allow_command = true;
+            break;
+        }
     }
 
-    let output = Command::new("test")
-        .arg("-f")
-        .arg(format!("{}/{}", allowed_cmd_path, command))
-        .output()
-        .expect("failed to execute process");
-
-    if output.status.success() {
-        Ok(String::from("Ok! Go ahead :)"))
+    if allow_command {
+        Ok(String::from(""))
     } else {
-        Err(String::from("Command not allowed!"))
+        Err(String::from("Command not allowed (command path)."))
     }
 }
 
-fn run_command(command: &str, args: &str) -> Vec<u8> {
-    let sanitized_command = command.replace("../", "");
-
-    println!("command: {}", sanitized_command);
-
-    match check_command(sanitized_command.as_str()) {
-        Ok(stdout) => println!("Ok: {}", stdout),
-        Err(stderr) => println!("Err: {}", stderr),
+fn check_command_deny_list(command: &str) -> Result<String, String> {
+    let command_deny_list: String;
+    match env::var("COMMAND_DENY_LIST") {
+        Ok(val) => command_deny_list = val,
+        _ => return Ok(String::from("Ok, deny list is empyt.")),
     }
 
-    let output = Command::new(sanitized_command)
+    let deny_command = command_deny_list.split(",").any(|v| v == command);
+    if deny_command {
+        Err(String::from("Command not allowed (deny list)."))
+    } else {
+        Ok(String::from("Command not in the deny list."))
+    }
+}
+
+fn check_command(command: &str) -> Result<String, String> {
+    match check_command_deny_list(command) {
+        Ok(_) => check_command_path(command),
+        Err(e) => Err(e),
+    }
+}
+
+fn sanitize_command(command: String) -> String {
+    return command.replace("../", "");
+}
+
+fn run_command(mut command: String, args: &str) -> String {
+    command = sanitize_command(command);
+    match check_command(command.as_str()) {
+        Ok(_) => (),
+        Err(stderr) => panic!("{}", stderr),
+    }
+
+    let output = Command::new(command)
         .arg(args)
         .output()
         .expect("failed to execute process");
 
-    output.stdout
+    String::from_utf8(output.stdout).unwrap()
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:50051".parse().unwrap();
+    let addr: SocketAddr = "0.0.0.0:50051".parse().unwrap();
     let commander = CarapaceCommandServer::new(Commander::default());
 
     let grpc_web_layer = GrpcWebLayer::new();
