@@ -13,9 +13,9 @@ check-deps:
 server: check-env
 	cargo run --bin carapace-server
 
-.PHONY: client
-client:
-	cargo run --bin carapace-client
+.PHONY: build
+build:
+	cargo build -r
 
 .PHONY: gen-client-js
 gen-client-js:
