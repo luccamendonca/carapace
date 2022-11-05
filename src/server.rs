@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::env;
 
 use http::Method;
 use tonic::transport::Server;
@@ -9,7 +9,11 @@ mod commander;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr: SocketAddr = "0.0.0.0:50051".parse().unwrap();
+    let listen_addr: String = match env::var("LISTEN_ADDR") {
+        Ok(val) => val,
+        Err(_) => "0.0.0.0:50051".parse().unwrap(),
+    };
+
     let commander =
         commander::carapace_command::carapace_command_server::CarapaceCommandServer::new(
             commander::Commander::default(),
@@ -26,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .layer(cors_layer)
         .layer(grpc_web_layer)
         .add_service(commander)
-        .serve(addr)
+        .serve(listen_addr.parse().unwrap())
         .await
     {
         Ok(_) => (),
